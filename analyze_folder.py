@@ -46,6 +46,8 @@ for i,maldi_file in enumerate(glob.iglob(folder+'/*.txt')):
 	hashes = "#"*int(percentage)
 	spaces = " "*(100-int(percentage))
 	sb.call(["printf",'\r'+hashes+spaces+'(%2.0f%%)',str(percentage)])
+	plot_file = os.path.splitext(maldi_file)[0]+'.png'
+	mld.plot_peak_family(plot_file)
 
 sb.call(["printf","\n"])
 np.savetxt('ssrs.txt',results,header="peak0\tpeak1\tpeak2\tpeak3\tpeak4\tpeak5\tSSR\txHeavy\tstdev\tpeak_area")

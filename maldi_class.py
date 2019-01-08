@@ -47,6 +47,14 @@ class Maldi(object):
 		peakx+=peakx_start
 		return (peakx,peak)
 
+	def get_peak_family(self):
+		peaks = np.empty((self.ligand_number+1,3))
+		for i in range(self.ligand_number+1):
+			peakx,peak=self.find_peak(self.metal+self.ligand1*i+self.ligand2*(self.ligand_number-i))
+			peaks[i,0]= peakx[max(np.where(np.cumsum(peak)<0.005)[0])] if np.any(np.cumsum(peak)<0.005) else peakx[0]
+			peaks[i,1]=np.average(peakx,weights=peak)
+			peaks[i,2]= peakx[min(np.where(np.cumsum(peak)>0.995)[0])] if np.any(np.cumsum(peak)>0.995) else peakx[-1]
+		return peaks
 
 	def print_peak_family(self):
 		peaks = np.empty((self.ligand_number+1,3))
@@ -113,6 +121,14 @@ class Maldi(object):
 		binomial = map(lambda k: binom.pmf(k,self.ligand_number,ligand1_fraction),np.arange(self.ligand_number+1))
 		ssr = np.sum((normed_peaks-binomial)**2)
 		return ssr
+	
+	def plot_peak_family(self,filename):
+		peaks = self.get_peak_family()	
+		minimum_mz = peaks[0,0]
+		maximum_mz = peaks[-1,2]
+		data_within_range = self.maldi_data[np.where((self.maldi_data[:,0]>minimum_mz) & (self.maldi_data[:,0]<maximum_mz))[0],:]
+		plt.plot(data_within_range[:,0],data_within_range[:,1])
+		plt.savefig(filename,format='png')
 	
 	def get_ssr_noisiness(self,noise,numsamples):
 		ssrs = np.empty(numsamples)
