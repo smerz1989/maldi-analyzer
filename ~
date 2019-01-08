@@ -1,0 +1,49 @@
+import numpy as np
+
+from scipy.integrate import cumtrapz
+from itertools import cycle
+import matplotlib
+#from matplotlib.pyplot import figure
+import sys
+import re
+
+au = [(196.966543,1.00),]
+pd = [(101.905634,0.0102),(103,0),(103.904029,0.1114),(104.905079,0.2233),(105.903478,0.2733),(107,0),(107.903895,0.2646),(109,0),(109.905167,0.1172)]
+ag = [(106.905092,0.51839),(108,0),(108.904756,0.48161)]
+s = [(31.97207070,0.9493),(32.97145843,0.0076),(33.96786665,0.0429),(35,0),(35.96708062,0.0002)]
+c = [(12.000,0.9893),(13.003,0.0107)]
+h = [( 1.007825032,0.999885),(2.014101778,0.000115)]
+o = [(15.99491463,0.99757),(16.9991312,0.00038),(17.9991603,0.00205)]
+
+element_dict = {'Ag':ag,'Au':au,'Pd':pd,'S':s,'C':c,'O':o,'H':h}
+
+def find_peak(molecule_string):
+	element_matches = re.finditer(r"[a-zA-Z]+",molecule_string)
+	count_matches = re.finditer(r"[0-9]+",molecule_string)
+	molecule = []
+	for count_string,element_string in zip(count_matches,element_matches):
+		element = element_dict[element_string.group(0)]
+		element_probs = [isotope[1] for isotope in element]
+		molecule.append((element,int(count_string.group(0))))
+	peak = np.array([1])
+	peakx_start = 0
+	for element in molecule:
+		element_probs = [isotope[1] for isotope in element[0]]
+		peakx_start+=element[0][0][0]*element[1]
+		for count in xrange(element[1]):
+			peak = np.convolve(peak,element_probs)
+	peakx = np.arange(peak.shape[0],dtype=float)
+	peakx+=peakx_start
+	return (peakx,peak)
+
+
+def integrate_peak(maldi_filename,molecule_string):
+	(peakxs,peaks) = find_peak(molecule_string)
+	maldi_data = np.loadtxt(maldi_filename)
+	lowerbound = peakxs[max(np.where(np.cumsum(peaks)<0.005)[0])] if np.any(np.cumsum()<0.005) else peakxs[0]
+	upperbound = peakxs[min(np.where(np.cumsum(peaks)>0.995)[0])] if np.any(np.cumsum()>0.995) else peakxs[-1]
+	peak_data = maldi_data[(maldi_data[:,0]>lowerbound) & (maldi_data[:,0]<upperbound)]
+	print(peak_data)
+	area = cumtrapz(peak_data)
+	print(area)
+	return lowerbound,upperbound

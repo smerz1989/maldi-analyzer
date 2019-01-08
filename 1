@@ -1,0 +1,31 @@
+import os,sys
+import glob
+from maldi_class import Maldi
+import numpy as np
+
+folder = os.path.abspath(sys.argv[1])
+num_files = len([mld_file for mld_file in glob.iglob(folder+'/*.txt')])
+
+fragment_number = 5
+heavy_ligand = 'S1C12H23O2'
+light_ligand = 'S1C12H25'
+results = np.empty((num_files,fragment_number+1+1+1+1))
+
+for i,maldi_file in enumerate(glob.iglob(folder+'/*.txt')):
+	print("Analyzing file "+str(maldi_file))
+	mld = Maldi(maldi_file,'Au'+str(fragment_number),heavy_ligand,light_ligand,fragment_number)
+	#mld.print_peak_family()
+	#import pdb;pdb.set_trace()
+	peaks = mld.integrate_peak_family()
+	noise = mld.get_noise(1050,1080)
+	normed_peaks = peaks/np.sum(peaks)
+	results[i,0:(fragment_number+1)] = normed_peaks
+	results[i,(fragment_number+1)] = mld.get_ssr()
+	results[i,fragment_number+2] = mld.get_ligand1_fraction()
+	ssrs = mld.get_ssr_noisiness(noise,200)
+	results[i,fragment_number+3] = np.std(ssrs)
+	print(normed_peaks) 
+	print("SSR: "+str(mld.get_ssr()))
+	print("xDDT: "+str(mld.get_ligand1_fraction()))
+	print("STDEV of SSR: "+str(np.std(ssrs)))
+	np.savetxt('ssrs.txt',results)
